@@ -65,12 +65,20 @@ ifeq "$(wildcard $(KERNEL_SRC) )" ""
 else
     NEEDS_KERNEL_COPY := true
     ifeq ($(TARGET_KERNEL_CONFIG),)
-        $(warning **********************************************************)
-        $(warning * Kernel source found, but no configuration was defined  *)
-        $(warning * Please add the TARGET_KERNEL_CONFIG variable to your   *)
-        $(warning * BoardConfig.mk file                                    *)
-        $(warning **********************************************************)
-        # $(error "NO KERNEL CONFIG")
+        ifeq ($(TARGET_KERNEL_PROVIDES_BUILD_COMMANDS),)
+            $(warning **********************************************************)
+            $(warning * Kernel source found, but no configuration was defined  *)
+            $(warning * Please add the TARGET_KERNEL_CONFIG variable to your   *)
+            $(warning * BoardConfig.mk file                                    *)
+            $(warning **********************************************************)
+            # $(error "NO KERNEL CONFIG")
+        else
+            $(warning **********************************************************)
+            $(warning * Kernel source found, but no configuration was defined  *)
+            $(warning * You have provided your own way of building the kernel  *)
+            $(warning * Ensure this is what you expected                       *)
+            $(warning **********************************************************)
+        endif
     else
         #$(info Kernel source found, building it)
         FULL_KERNEL_BUILD := true
@@ -127,6 +135,8 @@ $(KERNEL_OUT):
 	mkdir -p $(KERNEL_OUT)
 	mkdir -p $(KERNEL_MODULES_OUT)
 
+ifeq ($(TARGET_KERNEL_PROVIDES_BUILD_COMMANDS),)
+
 $(KERNEL_CONFIG): $(KERNEL_OUT)
 	$(MAKE) -C $(KERNEL_SRC) O=$(KERNEL_OUT) ARCH=$(TARGET_ARCH) $(ARM_CROSS_COMPILE) $(KERNEL_DEFCONFIG)
 
@@ -148,7 +158,13 @@ $(TARGET_PREBUILT_INT_KERNEL): $(TARGET_KERNEL_MODULES)
 
 $(KERNEL_HEADERS_INSTALL): $(KERNEL_OUT) $(KERNEL_CONFIG)
 	$(MAKE) -C $(KERNEL_SRC) O=$(KERNEL_OUT) ARCH=$(TARGET_ARCH) $(ARM_CROSS_COMPILE) headers_install
+else
 
+$(warning ***************************************************************)
+$(warning *Using provided build commands*)
+$(warning ***************************************************************)
+include $(TARGET_KERNEL_PROVIDES_BUILD_COMMANDS)
+endif # TARGET_KERNEL_PROVIDES_BUILD_COMMANDS
 endif # FULL_KERNEL_BUILD
 
 ## Install it
